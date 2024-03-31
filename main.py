@@ -42,18 +42,18 @@ def Urad_Samples(Data_Condition):
         return_code, results, raw_results = uRAD_RP_SDK11.detection()
         if (return_code != 0):
             CloseProgram()
+            
+        with Data_Condition:
+            
         
-        Raw_Data_mem    =   shared_memory.SharedMemory(name='RawData')
-        Raw_Data        =   np.ndarray((2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
+            Raw_Data_mem    =   shared_memory.SharedMemory(name='RawData')
+            Raw_Data        =   np.ndarray((2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
 
-        Raw_Data[0]=raw_results[0]/4095-1/2
-        Raw_Data[1]=raw_results[1]/4095-1/2
+            Raw_Data[0]=np.array(raw_results[0])/4095-1/2
+            Raw_Data[1]=np.array(raw_results[1])/4095-1/2
 
-        Raw_Data_mem.close()
-        Data_Condition.notify()
-
-        print("xd")
-
+            Raw_Data_mem.close()
+            Data_Condition.notify()
 
 if __name__ == '__main__':
     raw_data_size_IQ        =   np.dtype(np.float64).itemsize*2*Ns
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     Raw_Data_mem    =   shared_memory.SharedMemory(create=True, size=raw_data_size_IQ, name='RawData')
     Raw_Data        =   np.ndarray(shape=(2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
 
-    Read=Process(target=Urad_Samples, args=(Rx_Data_ready))
+    Read=Process(target=Urad_Samples, args=(Rx_Data_ready,))
 
     Read.start()
     Read.join()
