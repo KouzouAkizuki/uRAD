@@ -67,7 +67,7 @@ if __name__ == '__main__':
     Raw_Data_mem    =   shared_memory.SharedMemory(create=True, size=raw_data_size_IQ, name='RawData')
     Raw_Data        =   np.ndarray(shape=(2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
 
-    Read=Process(target=Urad_Samples, args=(Rx_Data_ready))
+    Read=Process(target=Urad_Samples, args=(Rx_Data_ready,))
 
     Read.start()
     Read.join()
