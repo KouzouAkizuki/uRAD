@@ -43,19 +43,22 @@ def Urad_Samples(Data_Condition):
         if (return_code != 0):
             CloseProgram()
         
-        Raw_Data_mem    =   shared_memory.SharedMemory(name='RawData')
-        Raw_Data        =   np.ndarray((2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
+        with Data_Condition:
 
-        Raw_Data[0]=raw_results[0]/4095-1/2
-        Raw_Data[1]=raw_results[1]/4095-1/2
+            Raw_Data_mem    =   shared_memory.SharedMemory(name='RawData')
+            Raw_Data        =   np.ndarray((2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
 
-        Raw_Data_mem.close()
-        Data_Condition.notify()
+            Raw_Data[0]=raw_results[0]/4095-1/2
+            Raw_Data[1]=raw_results[1]/4095-1/2
+
+            Raw_Data_mem.close()
+            Data_Condition.notify()
 
         print("xd")
 
 
 if __name__ == '__main__':
+    multiprocessing.set_start_method('')
     raw_data_size_IQ        =   np.dtype(np.float64).itemsize*2*Ns
     raw_data_size_normal    =   np.dtype(np.float64).itemsize*Ns
 
