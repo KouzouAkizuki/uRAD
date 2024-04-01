@@ -3,9 +3,7 @@ import multiprocessing
 from multiprocessing import	Process, Manager, shared_memory, Condition
 
 import numpy as np
-import scipy.signal
-from scipy.fft import fft, fftfreq, fftshift
-from  scipy.io import wavfile 
+import scipy.fft as spfft
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
@@ -60,31 +58,50 @@ def Urad_Samples(Data_Condition):
             Raw_Data_mem.close()
             Data_Condition.notify()
 
-def FFT_Process(Data,Fourier,Data_Condition):
+def FFT_Process(Data,Fourier,Data_Condition,Fourier_Condition):
 
     while True:
 
         with Data_Condition:
             
             Data_Condition.wait()
-            FourierRawData_mem = shared_memory.SharedMemory(name=Data)
+            RawData_mem = shared_memory.SharedMemory(name=Data)
             
-            FourierRawData = np.ndarray((2,Ns), dtype=np.float64, buffer=FourierRawData_mem.buf)
-            Buffer=FourierRawData[0]+FourierRawData[1]*1j            
+            RawData = np.ndarray((2,Ns), dtype=np.float64, buffer=RawData_mem.buf)
+            Buffer=RawData[0]+RawData[1]*1j            
             
-            FourierRawData_mem.close()  
+            RawData_mem.close()  
 
-            Buffer=fft(Buffer)
+            Buffer=spfft.fft(Buffer)
             Buffer=1.0/Ns*np.abs(Buffer)
-            Buffer=fftshift(Buffer)   
+            Buffer=spfft.fftshift(Buffer)   
 
             Buffer=20*np.log10(Buffer,where=(Buffer!=0),out=np.ones_like(Buffer)*-100)
 
-            FFT_Data_Graph_Buffer_Global_mem = shared_memory.SharedMemory(name=Fourier)
-            FFT_Data_Graph_Buffer_Global = np.ndarray((Ns), dtype=np.float64, buffer=FFT_Data_Graph_Buffer_Global_mem.buf)
+            with Fourier_Condition:
 
-            np.copyto(FFT_Data_Graph_Buffer_Global,Buffer)
-            FFT_Data_Graph_Buffer_Global_mem.close()
+                Fourier_Data_mem = shared_memory.SharedMemory(name=Fourier)
+                Fourier_Data = np.ndarray((Ns), dtype=np.float64, buffer=Fourier_Data_mem.buf)
+
+                np.copyto(Fourier_Data,Buffer)
+                Fourier_Data_mem.close()
+                Fourier_Condition.notify()
+
+def Peak_Detection(Data,Data_Condition):
+     while True:
+          
+          with Data_Condition:
+            Data_Condition.wait()
+            Fourier_Data_mem    = shared_memory.SharedMemory(name=Data)
+            Fourier_Data        = np.ndarray((Ns), dtype=np.float64, buffer=Fourier_Data_mem.buf)
+            
+            Fourier_Data_mem.close()
+
+            peak=np.argmax(Fourier_Data)
+
+            print(np.linspace(start=-75, stop=75, num=Ns)[peak])
+
+
 
 def update_1(graph,data_y,data_x,num):
         
@@ -139,6 +156,7 @@ if __name__ == '__main__':
     raw_data_size_normal    =   np.dtype(np.float64).itemsize*Ns
 
     Rx_Data_ready   =   Condition()
+    Fourier_Data_ready  = Condition()
     
     Raw_Data_mem    =   shared_memory.SharedMemory(create=True, size=raw_data_size_IQ, name='RawData')
     Raw_Data        =   np.ndarray(shape=(2,Ns), dtype=np.float64, buffer=Raw_Data_mem.buf)
@@ -148,11 +166,13 @@ if __name__ == '__main__':
 
     Read=Process(target=Urad_Samples, args=(Rx_Data_ready,))
     Graph=Process(target=Graph_Pyqtgraph_Core, args=('Samples',))
-    Fourier=Process(target=FFT_Process, args=('RawData','Fourier',Rx_Data_ready,))
+    Fourier=Process(target=FFT_Process, args=('RawData','Fourier',Rx_Data_ready,Fourier_Data_ready,))
+    Processing=Process(target=Peak_Detection, args=('Fourier', Fourier_Data_ready))
 
     Read.start()
     Graph.start()
     Fourier.start()
+    Processing.start()
     
     Read.join()
 
