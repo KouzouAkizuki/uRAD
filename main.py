@@ -89,7 +89,7 @@ def FFT_Process(Data,Fourier,Data_Condition,Fourier_Condition):
 				Fourier_Data_mem.close()
 				Fourier_Condition.notify()
 
-def Peak_Detection(Data,Data_Condition,Data_Manager,Time_Manager,s):
+def Peak_Detection(Data,Data_Condition,Data_Manager,Time_Manager):
 	ref=time.time()
 	while True:
 		with Data_Condition:
